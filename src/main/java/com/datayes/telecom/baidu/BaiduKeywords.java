@@ -1,7 +1,8 @@
-package com.datayes.hadoop.search.keyword;
+package com.datayes.telecom.baidu;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -15,7 +16,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import com.datayes.tools.DateTimeTools;
 
-public class KeywordsCount {
+public class BaiduKeywords {
 
 	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, IntWritable> {
@@ -33,17 +34,46 @@ public class KeywordsCount {
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 			String keyword = "";
-			String dateStr = "";
+			
 			if (value.toString().contains(baiduSearch)) {
-				keyword = value.toString().split(baiduSearch)[1];
+				
+				StringTokenizer itr = new StringTokenizer(value.toString());
+				int column=0;
+			      while (itr.hasMoreTokens()) {
+			        column++;
+			        String token = itr.nextToken();
+			        if(column==15)
+			        {
+			        	keyword = token;
+			        }
+			      }
+				
+				
+				String tss[] = keyword.split(baiduSearch);
+				if(tss!=null&&tss.length>1)
+				{
+				keyword = tss[1];
+				}
 				if (keyword.contains(prefixBaidu)) {
-					keyword = keyword.split(prefixBaidu)[1].split(postfix)[0];
-					keyword = URLDecoder.decode(keyword, "UTF-8");
-					String splittedStrs[] = value.toString().split(" ");
-					dateStr = splittedStrs[splittedStrs.length - 1];
-					if (DateTimeTools.isValidDateTimeStr(dateStr, timeFormat)) {
-						word.set("baidu_" + dateStr + "_" + keyword);
+					String usefulStrs[] = keyword.split(prefixBaidu);
+					if(usefulStrs!=null&&usefulStrs.length>1)
+					{
+						String usefulStr = usefulStrs[1];
+						String ss[] = usefulStr.split(postfix);
+						if(ss!=null&&ss.length>0)
+						{
+						keyword = ss[0];
+						//System.out.println("ready to decode:"+keyword);
+						try
+						{
+						keyword = URLDecoder.decode(keyword, "UTF-8");
+						
+						word.set(keyword);
 						context.write(word, one);
+						}
+						catch(Exception e)
+						{}
+						}
 					}
 				}
 			}
@@ -79,7 +109,7 @@ public class KeywordsCount {
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "Keywords Count");
-		job.setJarByClass(KeywordsCount.class);
+		job.setJarByClass(BaiduKeywords.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);
