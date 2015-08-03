@@ -1,4 +1,4 @@
-package com.datayes.telecom.baidu;
+package com.datayes.telecom.research;
 
 import java.io.IOException;
 
@@ -11,38 +11,38 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 /*
- * 超占内存，占job专用
+ * 把和百度相关的数据dump下来
  */
-public class LetYouGo {
+public class GenSomethingRelatedItems {
 	
 	private static Text mapperKey = new Text();
 	private static Text mapperValue = new Text();
 
-	public static class BaiduRelatedItemMapper extends
+	public static class SomethingRelatedItemMapper extends
 			Mapper<Object, Text, Text, Text> {
 
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 
 			// System.out.println("In file: " + fileName);
-
-			if (value.toString().contains("www.baidu.com")) {
-				for(int i=0;i<100000;i++)
-				{
+			Configuration conf = context.getConfiguration();
+			String keyword = conf.get("something");
+			
+			if (value.toString().contains(keyword)) {
+				
 				mapperKey.set(value.toString());
 				mapperValue.set("");
-				}
 				context.write(mapperKey, mapperValue);
-				
 			}
 		}
 	}
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "baidu related search");
-		job.setJarByClass(LetYouGo.class);
-		job.setMapperClass(BaiduRelatedItemMapper.class);
+		conf.set("something", args[2]);
+		Job job = Job.getInstance(conf, "something related search");
+		job.setJarByClass(GenSomethingRelatedItems.class);
+		job.setMapperClass(SomethingRelatedItemMapper.class);
 		job.setNumReduceTasks(0);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);

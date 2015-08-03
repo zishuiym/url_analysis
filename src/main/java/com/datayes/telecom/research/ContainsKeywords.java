@@ -1,7 +1,8 @@
-package com.datayes.telecom.baidu;
+package com.datayes.telecom.research;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
@@ -14,12 +15,10 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import com.datayes.tools.DateTimeTools;
-
 /*
  * 统计每天在百度上关键词的搜索量
  */
-public class BaiduKeywords {
+public class ContainsKeywords {
 
 	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, IntWritable> {
@@ -27,58 +26,18 @@ public class BaiduKeywords {
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
 
-		private static String baiduSearch = "baidu.com";
-		private static String prefixBaidu[] = { "wd=", "word=", "query=",};
-		private static String postfix = "&";
-
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
-			String keyword = "";
-
-			if (value.toString().contains(baiduSearch)) {
-
-				Configuration conf = context.getConfiguration();
-				int columnToProcess = Integer.parseInt(conf
-						.get("columnToProcess"));
-
-				StringTokenizer itr = new StringTokenizer(value.toString());
-				int column = 0;
-				while (itr.hasMoreTokens()) {
-					column++;
-					String token = itr.nextToken();
-					if (column == columnToProcess) {
-						keyword = token;
-					}
-				}
-				String tss[] = keyword.split(baiduSearch);
-				if (tss != null && tss.length > 1) {
-					keyword = tss[1];
-				}
-				for (String pre : prefixBaidu) {
-					if (keyword.contains(pre)) {
-						String usefulStrs[] = keyword.split(pre);
-						if (usefulStrs != null && usefulStrs.length > 1) {
-							String usefulStr = usefulStrs[1];
-							String ss[] = usefulStr.split(postfix);
-							if (ss != null && ss.length > 0) {
-								keyword = ss[0];
-								// System.out.println("ready to decode:"+keyword);
-								try {
-									keyword = URLDecoder.decode(keyword,
-											"UTF-8");
-
-									word.set(keyword);
-									context.write(word, one);
-								} catch (Exception e) {
-									word.set(keyword);
-									context.write(word, one);
-								}
-							}
-						}
-					}
-				}
+			Configuration conf = context.getConfiguration();
+			String keyword = conf.get("keyword");
+			String encodedKeyword = URLEncoder.encode(keyword,"UTF-8");
+			String txt = value.toString();
+			if(txt.contains(keyword)||txt.contains(encodedKeyword))
+			{
+				context.write(word, one);
 			}
 		}
+
 	}
 
 	public static class IntSumReducer extends
@@ -98,9 +57,9 @@ public class BaiduKeywords {
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		conf.set("columnToProcess", args[2]);
+		conf.set("keyword", args[2]);
 		Job job = Job.getInstance(conf, "Keywords Count");
-		job.setJarByClass(BaiduKeywords.class);
+		job.setJarByClass(ContainsKeywords.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);

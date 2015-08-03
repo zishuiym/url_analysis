@@ -14,12 +14,10 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-import com.datayes.tools.DateTimeTools;
-
 /*
  * 统计每天在百度上关键词的搜索量
  */
-public class BaiduKeywords {
+public class TaobaoKeywords {
 
 	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, IntWritable> {
@@ -27,57 +25,70 @@ public class BaiduKeywords {
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
 
-		private static String baiduSearch = "baidu.com";
-		private static String prefixBaidu[] = { "wd=", "word=", "query=",};
+		private static String baiduSearch = "www.baidu.com";
+		private static String sougouSearch = "www.sogou.com";
+		private static String timeFormat = "yyyyMMdd";
+		private static String prefixBaidu = "s?wd=";
+		private static String prefixSougou = "query=";
 		private static String postfix = "&";
 
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 			String keyword = "";
-
+			
 			if (value.toString().contains(baiduSearch)) {
-
-				Configuration conf = context.getConfiguration();
-				int columnToProcess = Integer.parseInt(conf
-						.get("columnToProcess"));
-
+				
 				StringTokenizer itr = new StringTokenizer(value.toString());
-				int column = 0;
-				while (itr.hasMoreTokens()) {
-					column++;
-					String token = itr.nextToken();
-					if (column == columnToProcess) {
-						keyword = token;
-					}
-				}
+				int column=0;
+			      while (itr.hasMoreTokens()) {
+			        column++;
+			        String token = itr.nextToken();
+			        if(column==15)
+			        {
+			        	keyword = token;
+			        }
+			      }
+				
+				
 				String tss[] = keyword.split(baiduSearch);
-				if (tss != null && tss.length > 1) {
-					keyword = tss[1];
+				if(tss!=null&&tss.length>1)
+				{
+				keyword = tss[1];
 				}
-				for (String pre : prefixBaidu) {
-					if (keyword.contains(pre)) {
-						String usefulStrs[] = keyword.split(pre);
-						if (usefulStrs != null && usefulStrs.length > 1) {
-							String usefulStr = usefulStrs[1];
-							String ss[] = usefulStr.split(postfix);
-							if (ss != null && ss.length > 0) {
-								keyword = ss[0];
-								// System.out.println("ready to decode:"+keyword);
-								try {
-									keyword = URLDecoder.decode(keyword,
-											"UTF-8");
-
-									word.set(keyword);
-									context.write(word, one);
-								} catch (Exception e) {
-									word.set(keyword);
-									context.write(word, one);
-								}
-							}
+				if (keyword.contains(prefixBaidu)) {
+					String usefulStrs[] = keyword.split(prefixBaidu);
+					if(usefulStrs!=null&&usefulStrs.length>1)
+					{
+						String usefulStr = usefulStrs[1];
+						String ss[] = usefulStr.split(postfix);
+						if(ss!=null&&ss.length>0)
+						{
+						keyword = ss[0];
+						//System.out.println("ready to decode:"+keyword);
+						try
+						{
+						keyword = URLDecoder.decode(keyword, "UTF-8");
+						
+						word.set(keyword);
+						context.write(word, one);
+						}
+						catch(Exception e)
+						{}
 						}
 					}
 				}
 			}
+			/*
+			 * else if(value.toString().contains(sougouSearch)) { keyword =
+			 * value.toString().split(sougouSearch)[1]; keyword =
+			 * keyword.split(prefixSougou)[1].split(postfix)[0]; keyword =
+			 * URLDecoder.decode(keyword, "UTF-8"); String splittedStrs[] =
+			 * value.toString().split(" "); dateStr =
+			 * splittedStrs[splittedStrs.length-1];
+			 * if(DateTimeTools.isValidDateTimeStr(dateStr, timeFormat)) {
+			 * word.set("sougou_"+dateStr+"_"+keyword); context.write(word,
+			 * one); } }
+			 */
 		}
 	}
 
@@ -98,9 +109,8 @@ public class BaiduKeywords {
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		conf.set("columnToProcess", args[2]);
 		Job job = Job.getInstance(conf, "Keywords Count");
-		job.setJarByClass(BaiduKeywords.class);
+		job.setJarByClass(TaobaoKeywords.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);

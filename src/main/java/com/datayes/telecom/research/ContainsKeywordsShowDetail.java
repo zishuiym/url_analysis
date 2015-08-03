@@ -1,6 +1,7 @@
-package com.datayes.telecom.baidu;
+package com.datayes.telecom.research;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -10,32 +11,38 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
-public class GenBaiduRelatedItems {
-	
-	private static Text mapperKey = new Text();
-	private static Text mapperValue = new Text();
+/*
+ * 统计每天在百度上关键词的搜索量
+ */
+public class ContainsKeywordsShowDetail {
 
-	public static class BaiduRelatedItemMapper extends
+	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, Text> {
+
+		private Text word = new Text();
+		private Text line = new Text();
 
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
-
-			// System.out.println("In file: " + fileName);
-
-			if (value.toString().contains("www.baidu.com")) {
-				mapperKey.set(value.toString());
-				mapperValue.set("");
-				context.write(mapperKey, mapperValue);
+			Configuration conf = context.getConfiguration();
+			String keyword = conf.get("keyword");
+			String encodedKeyword = URLEncoder.encode(keyword,"UTF-8");
+			String txt = value.toString();
+			if(txt.contains(keyword)||txt.contains(encodedKeyword))
+			{
+				line.set(txt);
+				context.write(word, line);
 			}
 		}
+
 	}
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		Job job = Job.getInstance(conf, "baidu related search");
-		job.setJarByClass(GenBaiduRelatedItems.class);
-		job.setMapperClass(BaiduRelatedItemMapper.class);
+		conf.set("keyword", args[2]);
+		Job job = Job.getInstance(conf, "Keywords output");
+		job.setJarByClass(ContainsKeywordsShowDetail.class);
+		job.setMapperClass(TokenizerMapper.class);
 		job.setNumReduceTasks(0);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
@@ -43,5 +50,4 @@ public class GenBaiduRelatedItems {
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
-
 }
