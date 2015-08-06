@@ -1,7 +1,9 @@
-package com.datayes.telecom.baidu;
+package com.datayes.telecom.ec;
 
 import java.io.IOException;
 import java.net.URLDecoder;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import org.apache.hadoop.conf.Configuration;
@@ -15,12 +17,10 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-import com.datayes.tools.DateTimeTools;
-
 /*
- * 统计每天在百度上关键词的搜索量
+ * 统计每天在ec上关键词的搜索量
  */
-public class BaiduKeywords {
+public class EcKeywords {
 
 	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, IntWritable> {
@@ -28,19 +28,25 @@ public class BaiduKeywords {
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
 
-		private static String baiduSearch = "baidu.com";
-		private static String prefixBaidu[] = { "wd=", "word=", "query=",};
-		private static String postfix = "&";
+		//private static String baiduSearch = "tmall.com";
+		//private static String prefixBaidu[] = { "q=" };
+		//private static String postfix = "&";
 
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 			String keyword = "";
-
-			if (value.toString().contains(baiduSearch)) {
-
-				Configuration conf = context.getConfiguration();
+			
+			String txt = value.toString();
+			Configuration conf = context.getConfiguration();
+			String filterWord = conf.get("filterString");
+			
+			if (txt.contains(filterWord)) {
+				
 				int columnToProcess = Integer.parseInt(conf
 						.get("columnToProcess"));
+				String prefixList = conf.get("prefixList");
+				String postfix = conf.get("postfix");
+				String coding = conf.get("coding");
 
 				StringTokenizer itr = new StringTokenizer(value.toString());
 				int column = 0;
@@ -51,11 +57,19 @@ public class BaiduKeywords {
 						keyword = token;
 					}
 				}
-				String tss[] = keyword.split(baiduSearch);
+				String tss[] = keyword.split(filterWord);
 				if (tss != null && tss.length > 1) {
 					keyword = tss[1];
 				}
-				for (String pre : prefixBaidu) {
+				
+				List<String> preList = new ArrayList<String>();
+				String tmps[] = prefixList.split("_");
+				for(String tmp: tmps)
+				{
+					preList.add(tmp);
+				}
+				
+				for (String pre : preList) {
 					if (keyword.contains(pre)) {
 						String usefulStrs[] = keyword.split(pre);
 						if (usefulStrs != null && usefulStrs.length > 1) {
@@ -66,7 +80,7 @@ public class BaiduKeywords {
 								// System.out.println("ready to decode:"+keyword);
 								try {
 									keyword = URLDecoder.decode(keyword,
-											"UTF-8");
+											coding);
 
 									word.set(keyword);
 									context.write(word, one);
@@ -107,10 +121,14 @@ public class BaiduKeywords {
 		Configuration conf = new Configuration();
 		conf.set("columnToProcess", args[3]);
 		conf.set("min_filter_num", args[4]);
+		conf.set("filterString", args[5]);
+		conf.set("prefixList", args[6]);
+		conf.set("postfix", args[7]);
+		conf.set("coding", args[8]);
 		String[] otherArgs = new GenericOptionsParser(conf,
                 args).getRemainingArgs();
 		Job job = Job.getInstance(conf, "Keywords Count");
-		job.setJarByClass(BaiduKeywords.class);
+		job.setJarByClass(EcKeywords.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);

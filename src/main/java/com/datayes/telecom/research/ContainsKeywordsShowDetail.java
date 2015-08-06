@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.GenericOptionsParser;
 
 /*
  * 统计每天在百度上关键词的搜索量
@@ -39,15 +40,18 @@ public class ContainsKeywordsShowDetail {
 
 	public static void main(String[] args) throws Exception {
 		Configuration conf = new Configuration();
-		conf.set("keyword", args[2]);
+		conf.set("keyword", args[3]);
+		String[] otherArgs = new GenericOptionsParser(conf,
+                args).getRemainingArgs();
 		Job job = Job.getInstance(conf, "Keywords output");
 		job.setJarByClass(ContainsKeywordsShowDetail.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setNumReduceTasks(0);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-		FileInputFormat.addInputPath(job, new Path(args[0]));
-		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		FileInputFormat.addInputPath(job, new Path(args[1]));
+		FileOutputFormat.setOutputPath(job, new Path(args[2]));
+		
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 	}
 }

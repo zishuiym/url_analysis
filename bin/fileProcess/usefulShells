@@ -1,0 +1,2 @@
+#sort by last column, desc
+awk '{print $NF,$0}' useful.txt | sort -n -r | cut -f 2- -d ' '

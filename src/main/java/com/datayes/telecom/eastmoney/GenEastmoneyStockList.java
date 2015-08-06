@@ -13,6 +13,8 @@ import org.htmlparser.tags.LinkTag;
 import org.htmlparser.util.NodeList;
 import org.htmlparser.util.ParserException;
 
+import com.datayes.tools.FileTool;
+
 public class GenEastmoneyStockList {
 
 	public static Hashtable<String, String> genEastMoneyStockList(String rootUrl) {
@@ -25,7 +27,7 @@ public class GenEastmoneyStockList {
 		Set<String> links = new HashSet<String>();
 		try {
 			Parser parser = new Parser(url);
-			parser.setEncoding("UTF-8");  
+			parser.setEncoding("UTF-8");
 			// parser.setEncoding("utf-8");
 			// 过滤 <frame >标签的 filter，用来提取 frame 标签里的 src 属性所表示的链接
 			NodeFilter frameFilter = new NodeFilter() {
@@ -74,9 +76,12 @@ public class GenEastmoneyStockList {
 		String rootUrl = "http://quote.eastmoney.com/stock_list.html";
 		Hashtable<String, String> codeToUrlMap = genEastMoneyStockList(rootUrl);
 		Set<String> set = extractLinks(rootUrl);
-		for(String url: set)
-		{
-			System.out.println(url);
+		for (String url : set) {
+			if ("http://quote.eastmoney.com/sz300412.html".length() == url.length())
+			{
+				FileTool.writeLine("lib/eastmoney/urls.txt", url);
+				System.out.println(url);
+			}
 		}
 	}
 }

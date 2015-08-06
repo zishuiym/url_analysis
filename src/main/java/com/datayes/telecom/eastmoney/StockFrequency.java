@@ -1,9 +1,11 @@
-package com.datayes.telecom.research;
+package com.datayes.telecom.eastmoney;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.util.StringTokenizer;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -17,9 +19,9 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 /*
- * 统计每天在百度上关键词的搜索量
+ * 统计每天在东方财富上个股页面的搜索量
  */
-public class ContainsKeywords {
+public class StockFrequency {
 
 	public static class TokenizerMapper extends
 			Mapper<Object, Text, Text, IntWritable> {
@@ -29,13 +31,25 @@ public class ContainsKeywords {
 
 		public void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
-			Configuration conf = context.getConfiguration();
-			String keyword = conf.get("keyword");
-			String encodedKeyword = URLEncoder.encode(keyword,"UTF-8");
 			String txt = value.toString();
-			if(txt.contains(keyword)||txt.contains(encodedKeyword))
+			Configuration conf = context.getConfiguration();
+			String filterWord = conf.get("filterWord");
+			
+			if(txt.contains(filterWord))
 			{
-				context.write(word, one);
+				String urlListStr = conf.get("urlList");
+				List<String> urlList = getUrlListByStr(urlListStr);
+				for(String str : urlList)
+				{
+					//String encodedstr = URLEncoder.encode(str,"UTF-8");
+					
+					//if(txt.contains(str)||txt.contains(encodedstr))
+					if(txt.contains(str))
+					{
+						word.set(str);
+						context.write(word, one);
+					}
+				}
 			}
 		}
 
@@ -56,13 +70,51 @@ public class ContainsKeywords {
 		}
 	}
 
+	public static String genUrlListStr(String urlListFilePath)
+	{
+		StringBuffer sb= new StringBuffer("");
+		try
+		{
+	        FileReader reader = new FileReader(urlListFilePath);
+	        BufferedReader br = new BufferedReader(reader);
+	        String str = null;
+	        while((str = br.readLine()) != null) {
+	              sb.append(str+"\n");
+	        }
+	        br.close();
+	        reader.close();
+			}
+		catch(IOException e)
+		{
+			e.printStackTrace();
+		}
+        String urlListStr=sb.toString();
+        //System.out.println(urlListStr);
+		return urlListStr;
+	}
+	
+	public static List<String> getUrlListByStr(String urlListStr)
+	{
+		List<String> urlList = new ArrayList<String>();
+		String tmps[] = urlListStr.split("\n");
+		for(String tmp: tmps)
+		{
+			urlList.add(tmp);
+		}
+		//System.out.println(urlList);
+		return urlList;
+	}
+	
 	public static void main(String[] args) throws Exception {
+		
 		Configuration conf = new Configuration();
-		conf.set("keyword", args[3]);
+		String urlListFilePath = args[3];
 		String[] otherArgs = new GenericOptionsParser(conf,
                 args).getRemainingArgs();
+		conf.set("filterWord", args[4]);
+		conf.set("urlList", genUrlListStr(urlListFilePath));
 		Job job = Job.getInstance(conf, "Keywords Count");
-		job.setJarByClass(ContainsKeywords.class);
+		job.setJarByClass(StockFrequency.class);
 		job.setMapperClass(TokenizerMapper.class);
 		job.setCombinerClass(IntSumReducer.class);
 		job.setReducerClass(IntSumReducer.class);
@@ -71,5 +123,7 @@ public class ContainsKeywords {
 		FileInputFormat.addInputPath(job, new Path(args[1]));
 		FileOutputFormat.setOutputPath(job, new Path(args[2]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
+		
+		//getUrlListByStr(genUrlListStr("lib/eastmoney/urls.txt"));
 	}
 }
