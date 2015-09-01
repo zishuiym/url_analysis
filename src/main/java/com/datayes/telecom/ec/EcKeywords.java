@@ -17,6 +17,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+import com.datayes.tools.CoderTools;
+
 /*
  * 统计每天在ec上关键词的搜索量
  */
@@ -79,9 +81,8 @@ public class EcKeywords {
 								keyword = ss[0];
 								// System.out.println("ready to decode:"+keyword);
 								try {
-									keyword = URLDecoder.decode(keyword,
-											coding);
-
+									//keyword = URLDecoder.decode(keyword,coding);
+									keyword = CoderTools.decode(keyword, coding);
 									word.set(keyword);
 									context.write(word, one);
 								} catch (Exception e) {
